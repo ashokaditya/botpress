@@ -82,4 +82,5 @@ const mapStateToProps = state => ({
   currentFlow: state.flows.currentFlow,
   showFlowNodeProps: state.flows.showFlowNodeProps
 })
+
 export default connect(mapStateToProps, { switchFlow })(withRouter(FlowBuilder))
