@@ -1,11 +1,11 @@
 import React, { Component } from 'react'
-import classnames from 'classnames'
 import SplitPane from 'react-split-pane'
 import { connect } from 'react-redux'
 import { withRouter } from 'react-router-dom'
 
 import ContentWrapper from '~/components/Layout/ContentWrapper'
 import PageHeader from '~/components/Layout/PageHeader'
+import { operationAllowed } from '~/components/Layout/PermissionsChecker'
 
 import Toolbar from './containers/Toolbar'
 import Diagram from './containers/Diagram'
@@ -19,6 +19,28 @@ import { switchFlow } from '~/actions'
 const style = require('./style.scss')
 
 class FlowBuilder extends Component {
+  state = {
+    initialized: false
+  }
+
+  init() {
+    if (this.state.initialized || !this.props.user || !this.props.user.id) {
+      return
+    }
+    this.setState({
+      initialized: true,
+      readOnly: !operationAllowed({ user: this.props.user, op: 'write', res: 'bot.flows' })
+    })
+  }
+
+  componentDidMount() {
+    this.init()
+  }
+
+  componentDidUpdate() {
+    this.init()
+  }
+
   componentWillReceiveProps(nextProps) {
     const { flow } = nextProps.match.params
     if (flow) {
@@ -32,36 +54,45 @@ class FlowBuilder extends Component {
   }
 
   render() {
+    if (!this.state.initialized) {
+      return null
+    }
+
+    const { readOnly } = this.state
+
     return (
       <ContentWrapper stretch={true} className={style.wrapper}>
         <PageHeader className={style.header} width="100%">
-          <Topbar />
+          <Topbar readOnly={readOnly} />
         </PageHeader>
-        <Toolbar
-          onSaveAllFlows={() => {
-            this.diagram.saveAllFlows()
-          }}
-          onCreateFlow={name => {
-            this.diagram.createFlow(name)
-          }}
-          onDelete={() => {
-            this.diagram.deleteSelectedElements()
-          }}
-          onCopy={() => {
-            this.diagram.copySelectedElementToBuffer()
-          }}
-          onPaste={() => {
-            this.diagram.pasteElementFromBuffer()
-          }}
-        />
+        {!readOnly && (
+          <Toolbar
+            onSaveAllFlows={() => {
+              this.diagram.saveAllFlows()
+            }}
+            onCreateFlow={name => {
+              this.diagram.createFlow(name)
+            }}
+            onDelete={() => {
+              this.diagram.deleteSelectedElements()
+            }}
+            onCopy={() => {
+              this.diagram.copySelectedElementToBuffer()
+            }}
+            onPaste={() => {
+              this.diagram.pasteElementFromBuffer()
+            }}
+          />
+        )}
         <div className={style.workspace}>
           <SplitPane split="vertical" minSize={200} defaultSize={250}>
-            <div className={classnames(style.sidePanel)}>
-              <SidePanel />
+            <div className={style.sidePanel}>
+              <SidePanel readOnly={readOnly} />
             </div>
 
-            <div className={classnames(style.diagram)}>
+            <div className={style.diagram}>
               <Diagram
+                readOnly={readOnly}
                 ref={el => {
                   if (!!el) {
                     this.diagram = el.getWrappedInstance()
@@ -71,7 +102,7 @@ class FlowBuilder extends Component {
             </div>
           </SplitPane>
           <SkillsBuilder />
-          <NodeProps show={this.props.showFlowNodeProps} />
+          <NodeProps readOnly={readOnly} show={this.props.showFlowNodeProps} />
         </div>
       </ContentWrapper>
     )
@@ -80,7 +111,8 @@ class FlowBuilder extends Component {
 
 const mapStateToProps = state => ({
   currentFlow: state.flows.currentFlow,
-  showFlowNodeProps: state.flows.showFlowNodeProps
+  showFlowNodeProps: state.flows.showFlowNodeProps,
+  user: state.user
 })
 
 export default connect(mapStateToProps, { switchFlow })(withRouter(FlowBuilder))
