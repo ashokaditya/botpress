@@ -6,23 +6,23 @@ layout: guide
 
 A bot tutorial wouldn't be complete without covering Natural Language Understanding (NLU).
 
-## The `botpress-nlu` module
+## The `@botpress/nlu` module
 
 Botpress has an official module for easily adding NLU to your bots. Let's start by installing this module:
 
 ```bash
 # using npm
-npm install --save botpress-nlu
+npm install --save @botpress/nlu
 
 # using yarn
-yarn add botpress-nlu
+yarn add @botpress/nlu
 ```
 
 ## Providers
 
 In Botpress, NLU is acheived by connecting with 3rd-party providers such as [Rasa NLU](http://nlu.rasa.ai), [Microsoft LUIS](https://www.luis.ai/), [Google DialogFlow](dialogflow.com) or [IBM Watson NLU](https://www.ibm.com/watson/services/natural-language-understanding/).
 
-> **Note:** For this tutorial, we will use the native (built-in) NLU engine, which is useful for testing purposes or for simple classification. For more complex classification and entity extraction, consider [Switching to Rasa or Luis](https://github.com/botpress/botpress-nlu).
+> **Note:** For this tutorial, we will use the native (built-in) NLU engine, which is useful for testing purposes or for simple classification. For more complex classification and entity extraction, consider [Switching to Rasa or Luis](https://github.com/botpress/botpress/tree/master/packages/functionals/botpress-nlu).
 
 ## Intent Classification
 
@@ -52,7 +52,7 @@ Botpress abstracts the different NLU providers and provides a clean, easy-to-use
 
 For this tutorial, there are two user intents that we want to support: `play` and `see_leaderboard`. A real production bot would usually try to understand more things and be more complete, but for this tutorial this will be enough.
 
-First, install the [`botpress-nlu`](https://github.com/botpress/botpress-nlu) module.
+First, install the [`@botpress/nlu`](https://github.com/botpress/botpress/tree/master/packages/functionals/botpress-nlu) module.
 
 Once that's done, restart your bot. You should see a new "NLU" item in the left menu. Open it.
 
@@ -98,3 +98,31 @@ The latter example has the advantage of being case insensitive and is guaranteed
 [nluLeaderboard]: {{site.baseurl}}/images/nluLeaderboard.jpg
 [nluConsole]: {{site.baseurl}}/images/nluConsole.jpg
 [nluFlow]: {{site.baseurl}}/images/nluFlow.jpg
+
+## Changing the NLU provider
+
+To change NLU-provider you basically need to change several env-variables so that app knows provider and credentials to use.
+```bash
+NLU_PROVIDER=luis # can be native, dialogflow, rasa, luis, recast
+
+# Luis
+NLU_LUIS_APP_ID
+NLU_LUIS_PROGRAMMATIC_KEY
+NLU_LUIS_APP_SECRET
+NLU_LUIS_APP_REGION # Not required (default is westus)
+
+# DialogFlow
+GOOGLE_PROJECT_ID
+GOOGLE_APPLICATION_CREDENTIALS
+
+# RASA
+NLU_RASA_URL # Not required (default is http://localhost:5000/)
+NLU_RASA_TOKEN # Not required (none by default)
+NLU_RASA_PROJECT # Not required (default is botpress)
+
+# RECAST
+NLU_RECAST_TOKEN
+NLU_RECAST_USER_SLUG
+NLU_RECAST_BOT_SLUG
+```
+
