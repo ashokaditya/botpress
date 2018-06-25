@@ -1,4 +1,3 @@
-import { spawn } from 'child_process'
 import prompt from 'prompt'
 import chalk from 'chalk'
 import path from 'path'
@@ -71,7 +70,6 @@ const assertDoesntExist = file => {
  */
 const loadTemplate = async name => {
   const templatePath = path.join(__dirname, 'cli/templates/' + name)
-  const infoFile = path.join(templatePath, 'info.json')
 
   if (!fs.existsSync) {
     console.log(templateNotFoundError(name))
@@ -113,12 +111,11 @@ const generate = async result => {
   console.log(nextStepText)
 }
 
-module.exports = async program => {
+module.exports = async (dirName, { yes }) => {
   console.log(introductionText)
 
   // People can optionally provide the directory of the bot
   // Like "bp init my-bot"
-  const dirName = process.argv[3]
   if (dirName) {
     if (!fs.existsSync(dirName)) {
       fs.mkdirSync(dirName)
@@ -164,7 +161,7 @@ module.exports = async program => {
     }
   }
 
-  if (program.yes) {
+  if (yes) {
     generate({
       name: defaultBotName,
       version: botpressVersion,

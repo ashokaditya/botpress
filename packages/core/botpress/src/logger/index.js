@@ -13,14 +13,17 @@
  * @prop {Logger~MessageLogger} error Logs error messages (shown in production)
  */
 
-import winston from 'winston'
-import path from 'path'
-import Promise from 'bluebird'
 import moment from 'moment'
+import ms from 'ms'
+import winston from 'winston'
+import Promise from 'bluebird'
 
-import { isDeveloping } from './util'
+import { isDeveloping } from '../util'
+import DbTransport from './db-transport'
 
-module.exports = (dataLocation, logConfig) => {
+module.exports = logConfig => {
+  let _db = null
+
   const logger = new winston.Logger({
     level: isDeveloping ? 'debug' : 'info',
     transports: [
@@ -32,22 +35,19 @@ module.exports = (dataLocation, logConfig) => {
     ]
   })
 
-  logger.enableFileTransport = () => {
-    const logFile = path.join(dataLocation, logConfig.file)
-    logger.add(winston.transports.File, {
-      filename: logFile,
-      maxsize: logConfig.maxSize
-    })
+  logger.enableDbStorageIfNeeded = ({ db, janitor }) => {
+    if (logConfig.enabled) {
+      _db = db
+      const ttl = ms(`${logConfig.keepDays || 30}days`)
+      logger.add(DbTransport, { ttl, db, janitor })
+    }
   }
 
-  logger.archiveToFile = () => {
-    const logFile = path.join(dataLocation, logConfig.file)
-
-    return Promise.resolve(logFile)
-  }
-
-  if (!logConfig.disableFileLogs) {
-    logger.enableFileTransport()
+  logger.queryDb = (limit, order) => {
+    if (!logConfig.enabled) {
+      return Promise.resolve([])
+    }
+    return DbTransport._query(_db, limit, order)
   }
 
   return logger

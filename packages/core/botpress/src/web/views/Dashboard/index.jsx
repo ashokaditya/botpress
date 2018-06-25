@@ -18,17 +18,28 @@ class Dashboard extends React.Component {
   state = {
     loading: true,
     popularModules: [],
-    featuredModules: []
+    featuredModules: [],
+    hiddenHeroSection: true
   }
 
   initialized = false
 
-  componentDidUpdate() {
-    this.refresh()
+  init() {
+    if (this.initialized || !this.props.user || this.props.user.id == null) {
+      return
+    }
+
+    this.initialized = true
+    this.queryAllModules().finally(() => this.setState({ loading: false }))
   }
 
   componentDidMount() {
-    this.refresh()
+    this.init()
+    this.fetchHeroConfig()
+  }
+
+  componentDidUpdate() {
+    this.init()
   }
 
   queryAllModules() {
@@ -43,13 +54,10 @@ class Dashboard extends React.Component {
     )
   }
 
-  refresh = () => {
-    if (this.initialized || !this.props.user || this.props.user.id == null) {
-      return
-    }
-
-    this.initialized = true
-    this.queryAllModules().finally(() => this.setState({ loading: false }))
+  fetchHeroConfig() {
+    axios
+      .get('/api/community/hero')
+      .then(({ data: { hidden: hiddenHeroSection } }) => this.setState({ hiddenHeroSection }))
   }
 
   renderPopularModules() {
@@ -78,10 +86,23 @@ class Dashboard extends React.Component {
     )
   }
 
+  hero() {
+    const { hiddenHeroSection } = this.state
+
+    return !hiddenHeroSection ? (
+      <Col xs={12} sm={8} md={4} smOffset={2} mdOffset={0}>
+        <HeroComponent />
+      </Col>
+    ) : null
+  }
+
   render() {
-    if (this.state.loading || !this.initialized) {
+    const { hiddenHeroSection, loading } = this.state
+
+    if (loading || !this.initialized) {
       return null
     }
+
     return (
       <ContentWrapper>
         <PageHeader>
@@ -89,14 +110,10 @@ class Dashboard extends React.Component {
         </PageHeader>
         <Grid fluid className={'bp-dashboard'}>
           <Row>
-            <Col sm={12} md={8}>
+            <Col sm={12} md={hiddenHeroSection ? 12 : 8}>
               <InformationComponent />
             </Col>
-            <Col xs={12} sm={8} md={4} smOffset={2} mdOffset={0}>
-              <PermissionsChecker user={this.props.user} res="modules.list.community" op="read">
-                <HeroComponent />
-              </PermissionsChecker>
-            </Col>
+            {this.hero()}
           </Row>
           <Row>
             <Col sm={12} md={6}>

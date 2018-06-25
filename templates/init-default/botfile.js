@@ -1,15 +1,20 @@
-const isProd = process.env.NODE_ENV === 'production'
 const port = process.env.BOTPRESS_PORT || process.env.PORT || 3000
 const botUrl = process.env.BOTPRESS_URL || `http://localhost:${port}`
 
 module.exports = {
+  /*
+    Botpress minimal supported version.
+    Don't forget to change it when updating to the next major version.
+   */
+  version: '<%= version %>',
+
   /*
     The bot's base URL where the bot is reachable from the internet
    */
   botUrl: botUrl,
 
   /*
-    The botpress environment, useful to disambiguate multiple 
+    The botpress environment, useful to disambiguate multiple
     instances of the same bot running in different environments.
     e.g. "dev", "staging", "production"
    */
@@ -19,6 +24,11 @@ module.exports = {
     The port on which the API and UI will be available
    */
   port: port,
+
+  /*
+    The IP address which API will listen to (optional)
+   */
+  hostname: process.env.BOTPRESS_HOSTNAME,
 
   /*
     Where the content is stored
@@ -52,12 +62,11 @@ module.exports = {
   mediaDir: './generated/media',
 
   /*
-    By default logs are enabled and available in `dataDir`
+    By default logs are enabled and stored in the DB
    */
-  disableFileLogs: false,
-  log: {
-    file: 'bot.log',
-    maxSize: 1e6 // 1mb
+  logs: {
+    enabled: true,
+    keepDays: 30
   },
 
   /*
@@ -81,19 +90,14 @@ module.exports = {
   optOutStats: false,
 
   /*
-    Where the notifications are stored.
-    TODO: These should be stored in the database
-   */
-  notification: {
-    file: 'notifications.json',
-    maxLength: 50
-  },
-
-  /*
     By default ghost content management is only activated in production
    */
   ghostContent: {
     enabled: process.env.NODE_ENV === 'production' || process.env.BOTPRESS_GHOST_ENABLED
+  },
+
+  heroSection: {
+    hidden: false
   },
 
   /*

@@ -1,6 +1,7 @@
 import _ from 'lodash'
 import nanoid from 'nanoid'
 import multer from 'multer'
+import moment from 'moment'
 
 import util from '../util'
 
@@ -91,21 +92,14 @@ module.exports = (bp, app) => {
   })
 
   app.secure('read', 'bot.logs').get('/api/logs', (req, res) => {
-    const options = {
-      from: new Date() - 7 * 24 * 60 * 60 * 1000,
-      until: new Date(),
-      limit: (req.query && req.query.limit) || 50,
-      start: 0,
-      order: 'desc',
-      fields: ['message', 'level', 'timestamp']
-    }
-
-    bp.logger.query(options, (err, results) => {
-      if (err) {
-        return console.log(err)
-      }
-      res.send(results.file)
-    })
+    bp.logger
+      .queryDb((req.query && req.query.limit) || 50)
+      .then(results => {
+        res.send(results)
+      })
+      .catch(err => {
+        console.log(err)
+      })
   })
 
   app.secure('read', 'bot.logs').get('/api/logs/key', (req, res) => {
@@ -118,10 +112,25 @@ module.exports = (bp, app) => {
       return res.sendStatus(403)
     }
 
-    bp.logger.archiveToFile().then(archivePath => {
-      logsSecret = nanoid()
-      res.download(archivePath)
-    })
+    bp.logger
+      .queryDb(null, 'asc')
+      .then(results => {
+        logsSecret = nanoid()
+        res.setHeader('Content-type', 'text/plain')
+        res.setHeader('Content-disposition', 'attachment; filename=logs.txt')
+        res.send(
+          results
+            .map(({ timestamp, level, message }) => {
+              const time = moment(new Date(timestamp)).format('MMM DD HH:mm:ss')
+              return `${time} ${level}: ${message}`
+            })
+            .join('\n')
+        )
+      })
+      .catch(err => {
+        console.error(err)
+        res.sendStatus(500)
+      })
   })
 
   app.secure('read', 'bot.content').get('/api/content/categories', async (req, res) => {
@@ -220,5 +229,9 @@ module.exports = (bp, app) => {
 
   app.secure('write', 'bot.skills').post('/api/skills/:skillId/generate', async (req, res) => {
     res.send(await bp.skills.generateFlow(req.params.skillId, req.body))
+  })
+
+  app.get('/api/community/hero', (req, res) => {
+    res.send({ hidden: _.get(bp, 'botfile.heroSection.hidden', false) })
   })
 }

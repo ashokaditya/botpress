@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import { Row, Col, Button, Checkbox, Panel, Glyphicon } from 'react-bootstrap'
+import { Button, Checkbox, Panel } from 'react-bootstrap'
 import axios from 'axios'
 import _ from 'lodash'
 import classnames from 'classnames'
@@ -28,11 +28,11 @@ class LoggerView extends Component {
 
   componentWillUnmount() {
     clearInterval(this.refreshInterval)
-    this.setState({ cancelLoading: true })
+    this.cancelLoading = true
   }
 
   loadMore = () => {
-    this.setState({ limit: this.state.limit + 50, logs: null })
+    this.setState(({ limit }) => ({ limit: limit + 50 }))
   }
 
   toggleAutoRefresh = () => {
@@ -50,7 +50,7 @@ class LoggerView extends Component {
     const message = line.message.replace(/\[\d\d?m/gi, '')
 
     return (
-      <li key={`log_event_${index}`} className={styles.line}>
+      <li key={`${index}.${message}`} className={styles.line}>
         <span className={styles.time}>{time}</span>
         <span className={styles['level-' + line.level]}>{line.level + ': '}</span>
         <span className={styles.message}>{message}</span>
@@ -63,7 +63,7 @@ class LoggerView extends Component {
   }
 
   getArchiveKey() {
-    axios.get('/api/logs/key').then(({ data }) => this.setState({ archiveUrl: 'api/logs/archive/' + data.secret }))
+    axios.get('/api/logs/key').then(({ data }) => this.setState({ archiveUrl: '/api/logs/archive/' + data.secret }))
   }
 
   queryLogs = () => {
@@ -74,7 +74,7 @@ class LoggerView extends Component {
         }
       })
       .then(result => {
-        if (this.state.cancelLoading) {
+        if (this.cancelLoading) {
           return
         }
         this.setState({
@@ -90,21 +90,6 @@ class LoggerView extends Component {
     }
 
     return this.state.logs.filter(x => _.isString(x.message)).map(this.renderLine)
-  }
-
-  downloadArchive = () => {
-    axios({
-      url: this.state.archiveUrl,
-      method: 'GET',
-      responseType: 'blob'
-    }).then(response => {
-      const url = window.URL.createObjectURL(new Blob([response.data]))
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', 'logs.txt')
-      document.body.appendChild(link)
-      link.click()
-    })
   }
 
   render() {
@@ -130,7 +115,7 @@ class LoggerView extends Component {
               </Checkbox>
             </form>
             <div className="pull-right">
-              <Button onClick={this.downloadArchive}>Export logs archive</Button>
+              <Button href={this.state.archiveUrl}>Export logs archive</Button>
             </div>
           </Panel.Body>
         </Panel>

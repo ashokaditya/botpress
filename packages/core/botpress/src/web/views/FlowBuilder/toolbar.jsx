@@ -1,17 +1,17 @@
 import React from 'react'
 import { bindActionCreators } from 'redux'
 import { connect } from 'react-redux'
+
 import { Button, OverlayTrigger, Tooltip, DropdownButton, MenuItem } from 'react-bootstrap'
 
 import _ from 'lodash'
 
 import { updateGlobalStyle } from '~/actions'
+import PermissionsChecker from '~/components/Layout/PermissionsChecker'
 
 const style = require('./toolbar.scss')
 
 class Toolbar extends React.Component {
-  state = {}
-
   componentDidMount() {
     this.props.updateGlobalStyle({
       'bp-navbar': {
@@ -33,7 +33,7 @@ class Toolbar extends React.Component {
 
     const isInsertNodeMode = this.props.currentDiagramAction === 'insert_node'
 
-    const toggleInsertMode = action => element => {
+    const toggleInsertMode = action => () => {
       this.props.setDiagramAction(this.props.currentDiagramAction === action ? null : action)
     }
 
@@ -76,15 +76,17 @@ class Toolbar extends React.Component {
     )
 
     const insertSkillsDropdown = (
-      <DropdownButton title="Insert skill" id="toolbarInsertSkill">
-        <MenuItem header>Installed skills</MenuItem>
-        {!this.props.skills.length && noSkills}
-        {this.props.skills.map((skill, i) => (
-          <MenuItem key={i} eventKey={i} onClick={() => this.props.buildSkill(skill.id)}>
-            {skill.name}
-          </MenuItem>
-        ))}
-      </DropdownButton>
+      <PermissionsChecker user={this.props.user} op="write" res="bot.skills">
+        <DropdownButton title="Insert skill" id="toolbarInsertSkill">
+          <MenuItem header>Installed skills</MenuItem>
+          {!this.props.skills.length && noSkills}
+          {this.props.skills.map((skill, i) => (
+            <MenuItem key={i} eventKey={i} onClick={() => this.props.buildSkill(skill.id)}>
+              {skill.name}
+            </MenuItem>
+          ))}
+        </DropdownButton>
+      </PermissionsChecker>
     )
 
     return (

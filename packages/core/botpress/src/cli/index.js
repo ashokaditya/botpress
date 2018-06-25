@@ -13,8 +13,8 @@ import cloudPair from './cloudPair'
 import { getBotpressVersion, collectArgs } from '../util'
 
 program
-  .command('init')
-  .description('Create a new bot in current directory')
+  .command('init [dirName]')
+  .description('Create a new bot in new directory (or in current directory if not provided)')
   .option('-y, --yes', 'Say yes to every prompt and use default values')
   .action(init)
 
@@ -43,6 +43,7 @@ program
     collectArgs,
     []
   )
+  .option('-i, --inspect', 'Inspect bot with "debugger"')
   .action(start)
 
 program

@@ -51,6 +51,7 @@ import createUsers from './users'
 import createContentManager from './content/service'
 import defaultGetItemProviders from './content/getItemProviders'
 import createHelpers from './helpers'
+import createJanitor from './janitor'
 import stats from './stats'
 
 import EventBus from './bus'
@@ -88,8 +89,48 @@ const mkdirIfNeeded = (path, logger) => {
 
 const REQUIRED_PROPS = ['botUrl']
 
+const validateBotfile = botfile => {
+  if ('disableFileLogs' in botfile || _.get(botfile, 'log.file')) {
+    console.log(
+      `
+      You're using the old logs configuration format.
+      Since v11 botpress has stopped storing logs in files and
+      has moved them to the database.
+
+      Please update your botfile.
+
+      Old configuration format:
+        /*
+          By default logs are enabled and available in dataDir
+        */
+        disableFileLogs: false,
+        log: {
+          file: 'bot.log',
+          maxSize: 1e6 // 1mb
+        }
+
+      New format:
+        /*
+          By default logs are enabled and stored in the DB for 30 days
+        */
+        logs: {
+          enabled: true,
+          keepDays: 30
+        }
+      `
+    )
+    throw new Error('Outdated botfile format')
+  }
+
+  for (const prop of REQUIRED_PROPS) {
+    if (!(prop in botfile)) {
+      throw new Error(`Missing required botpress setting: ${prop}`)
+    }
+  }
+}
+
 class botpress {
-  constructor({ botfile }) {
+  constructor({ botfile, options = {} }) {
     this.version = getBotpressVersion()
     /**
      * The project location, which is the folder where botfile.js located
@@ -106,16 +147,19 @@ class botpress {
      */
     // eslint-disable-next-line no-eval
     this.botfile = eval('require')(botfile)
-
-    for (const prop of REQUIRED_PROPS) {
-      if (!(prop in this.botfile)) {
-        throw new Error(`Missing required botpress setting: ${prop}`)
-      }
-    }
+    validateBotfile(this.botfile)
 
     this.stats = stats(this.botfile)
 
     this.interval = null
+
+    /*
+      Check --inspect flag
+    */
+
+    const opts = options.opts()
+
+    this.hasInspectMode = opts.inspect || opts.i
   }
 
   /**
@@ -148,11 +192,9 @@ class botpress {
     const dbLocation = path.join(dataLocation, 'db.sqlite')
     const version = packageJson.version
 
-    const logger = createLogger(dataLocation, botfile.log)
+    const logger = createLogger(botfile.logs)
     mkdirIfNeeded(dataLocation, logger)
     mkdirIfNeeded(configLocation, logger)
-
-    logger.info(`Starting botpress version ${version}`)
 
     const db = createDatabase({
       sqlite: { location: dbLocation },
@@ -160,6 +202,15 @@ class botpress {
       logger,
       botpressPath: this.botpressPath
     })
+
+    await db.get() // Running migrations
+
+    const janitor = createJanitor({ db, logger })
+
+    logger.enableDbStorageIfNeeded({ db, janitor })
+    logger.info(`Starting botpress version ${version}`)
+
+    janitor.start()
 
     const kvs = db._kvs
 
@@ -295,6 +346,7 @@ class botpress {
       licensing,
       modules,
       db,
+      janitor,
       kvs,
       configManager,
       cloud,
@@ -332,6 +384,18 @@ class botpress {
     const server = createServer(this)
     server.start().then(srv => {
       this.stopServer = srv && srv.stop
+
+      if (this.hasInspectMode) {
+        const serverPID = process.pid
+        const inspectSignal = 'SIGUSR1'
+
+        if (process.platform === 'win32') {
+          process._debugProcess(serverPID)
+        } else {
+          process.kill(serverPID, inspectSignal)
+        }
+      }
+
       events.emit('ready')
       for (const mod of _.values(loadedModules)) {
         mod.handlers.ready && mod.handlers.ready(this, mod.configuration, createHelpers)
